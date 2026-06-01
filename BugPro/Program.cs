@@ -2,119 +2,120 @@ using Stateless;
 
 namespace BugPro;
 
-public enum State
+public enum BugState
 {
-    NewDefect,
-    Analysis,
-    Resolution,
+    New,
+    Triage,
+    OnHold,
+    Rejected,
+    Fixing,
+    CannotReproduce,
+    NeedCheck,
     Returned,
     Closed,
-    Reopened,
-    NeedMoreInfo,
-    Review,
-    OnHold
+    Reopened
 }
 
-public enum Trigger
+public enum BugAction
 {
-    Analyze,
-    Reject,
-    AskInfo,
-    ProvideInfo,
+    StartTriage,
+    Postpone,
+    SeparateIssue,
+    NeedInfo,
+    NotABug,
+    Duplicate,
     StartFix,
-    VerifySuccess,
-    VerifyFailure,
-    ReportCannotReproduce,
-    ReturnForInfo,
-    ContinueFix,
-    ConfirmNotRepro,
-    ConfirmBugExists,
-    Reopen,
-    AnalyzeAgain,
-    Hold,
-    Resume
+    CannotFix,
+    MarkFixed,
+    MarkNotFixed,
+    ConfirmOk,
+    ConfirmNotOk,
+    Close,
+    Reopen
 }
 
 public class Bug
 {
-    private readonly StateMachine<State, Trigger> _machine;
+    private readonly StateMachine<BugState, BugAction> _machine;
     
     public Bug()
     {
-        _machine = new StateMachine<State, Trigger>(State.NewDefect);
+        _machine = new StateMachine<BugState, BugAction>(BugState.New);
         
-        _machine.Configure(State.NewDefect)
-            .Permit(Trigger.Analyze, State.Analysis)
-            .Permit(Trigger.Hold, State.OnHold);
+        _machine.Configure(BugState.New)
+            .Permit(BugAction.StartTriage, BugState.Triage);
         
-        _machine.Configure(State.Analysis)
-            .Permit(Trigger.Reject, State.Returned)
-            .Permit(Trigger.AskInfo, State.NeedMoreInfo)
-            .Permit(Trigger.StartFix, State.Resolution)
-            .Permit(Trigger.Hold, State.OnHold);
+        _machine.Configure(BugState.Triage)
+            .Permit(BugAction.Postpone, BugState.OnHold)
+            .Permit(BugAction.SeparateIssue, BugState.OnHold)
+            .Permit(BugAction.NeedInfo, BugState.OnHold)
+            .Permit(BugAction.NotABug, BugState.Rejected)
+            .Permit(BugAction.Duplicate, BugState.Rejected)
+            .Permit(BugAction.StartFix, BugState.Fixing);
         
-        _machine.Configure(State.NeedMoreInfo)
-            .Permit(Trigger.ProvideInfo, State.Analysis)
-            .Permit(Trigger.ContinueFix, State.Resolution)
-            .Permit(Trigger.Reject, State.Returned);
+        _machine.Configure(BugState.OnHold)
+            .Permit(BugAction.StartTriage, BugState.Triage);
         
-        _machine.Configure(State.Resolution)
-            .Permit(Trigger.VerifySuccess, State.Closed)
-            .Permit(Trigger.VerifyFailure, State.Returned)
-            .Permit(Trigger.ReportCannotReproduce, State.Review)
-            .Permit(Trigger.ReturnForInfo, State.NeedMoreInfo)
-            .Permit(Trigger.Hold, State.OnHold);
+        _machine.Configure(BugState.Fixing)
+            .Permit(BugAction.Postpone, BugState.OnHold)
+            .Permit(BugAction.SeparateIssue, BugState.OnHold)
+            .Permit(BugAction.NeedInfo, BugState.OnHold)
+            .Permit(BugAction.CannotFix, BugState.CannotReproduce)
+            .Permit(BugAction.MarkFixed, BugState.NeedCheck);
         
-        _machine.Configure(State.Review)
-            .Permit(Trigger.ConfirmNotRepro, State.Closed)
-            .Permit(Trigger.ConfirmBugExists, State.Returned);
+        _machine.Configure(BugState.CannotReproduce)
+            .Permit(BugAction.ConfirmOk, BugState.Closed)
+            .Permit(BugAction.ConfirmNotOk, BugState.Returned);
         
-        _machine.Configure(State.Closed)
-            .Permit(Trigger.Reopen, State.Reopened);
+        _machine.Configure(BugState.NeedCheck)
+            .Permit(BugAction.Close, BugState.Closed)
+            .Permit(BugAction.MarkNotFixed, BugState.Returned);
         
-        _machine.Configure(State.Reopened)
-            .Permit(Trigger.AnalyzeAgain, State.Analysis);
+        _machine.Configure(BugState.Returned)
+            .Permit(BugAction.StartTriage, BugState.Triage);
         
-        _machine.Configure(State.Returned)
-            .Permit(Trigger.Analyze, State.Analysis);
+        _machine.Configure(BugState.Closed)
+            .Permit(BugAction.Reopen, BugState.Reopened);
         
-        _machine.Configure(State.OnHold)
-            .Permit(Trigger.Resume, State.Analysis);
+        _machine.Configure(BugState.Reopened)
+            .Permit(BugAction.StartTriage, BugState.Triage);
     }
     
-    public void Analyze() => _machine.Fire(Trigger.Analyze);
-    public void Reject() => _machine.Fire(Trigger.Reject);
-    public void AskInfo() => _machine.Fire(Trigger.AskInfo);
-    public void ProvideInfo() => _machine.Fire(Trigger.ProvideInfo);
-    public void StartFix() => _machine.Fire(Trigger.StartFix);
-    public void VerifySuccess() => _machine.Fire(Trigger.VerifySuccess);
-    public void VerifyFailure() => _machine.Fire(Trigger.VerifyFailure);
-    public void ReportCannotReproduce() => _machine.Fire(Trigger.ReportCannotReproduce);
-    public void ReturnForInfo() => _machine.Fire(Trigger.ReturnForInfo);
-    public void ContinueFix() => _machine.Fire(Trigger.ContinueFix);
-    public void ConfirmNotRepro() => _machine.Fire(Trigger.ConfirmNotRepro);
-    public void ConfirmBugExists() => _machine.Fire(Trigger.ConfirmBugExists);
-    public void Reopen() => _machine.Fire(Trigger.Reopen);
-    public void AnalyzeAgain() => _machine.Fire(Trigger.AnalyzeAgain);
-    public void Hold() => _machine.Fire(Trigger.Hold);
-    public void Resume() => _machine.Fire(Trigger.Resume);
+    public void StartTriage() => _machine.Fire(BugAction.StartTriage);
+    public void Postpone() => _machine.Fire(BugAction.Postpone);
+    public void SeparateIssue() => _machine.Fire(BugAction.SeparateIssue);
+    public void NeedInfo() => _machine.Fire(BugAction.NeedInfo);
+    public void NotABug() => _machine.Fire(BugAction.NotABug);
+    public void Duplicate() => _machine.Fire(BugAction.Duplicate);
+    public void StartFix() => _machine.Fire(BugAction.StartFix);
+    public void CannotFix() => _machine.Fire(BugAction.CannotFix);
+    public void MarkFixed() => _machine.Fire(BugAction.MarkFixed);
+    public void MarkNotFixed() => _machine.Fire(BugAction.MarkNotFixed);
+    public void ConfirmOk() => _machine.Fire(BugAction.ConfirmOk);
+    public void ConfirmNotOk() => _machine.Fire(BugAction.ConfirmNotOk);
+    public void Close() => _machine.Fire(BugAction.Close);
+    public void Reopen() => _machine.Fire(BugAction.Reopen);
     
-    public State CurrentState => _machine.State;
+    public BugState CurrentState => _machine.State;
 }
 
 class Program
 {
     static void Main()
     {
-        Console.WriteLine("=== Демонстрация Workflow бага ===\n");
+        Console.WriteLine("=== Bug Workflow Demo ===\n");
         var bug = new Bug();
-        Console.WriteLine($"1. Новый дефект: {bug.CurrentState}");
-        bug.Analyze();
-        Console.WriteLine($"2. После анализа: {bug.CurrentState}");
+        
+        Console.WriteLine($"1. Initial: {bug.CurrentState}");
+        bug.StartTriage();
+        Console.WriteLine($"2. After triage: {bug.CurrentState}");
         bug.StartFix();
-        Console.WriteLine($"3. Начато исправление: {bug.CurrentState}");
-        bug.VerifySuccess();
-        Console.WriteLine($"4. Проверка успешна: {bug.CurrentState}");
-        Console.WriteLine("\n=== Дефект успешно исправлен ===");
+        Console.WriteLine($"3. After fix assigned: {bug.CurrentState}");
+        bug.MarkFixed();
+        Console.WriteLine($"4. After fix marked: {bug.CurrentState}");
+        bug.Close();
+        Console.WriteLine($"5. After close: {bug.CurrentState}");
+        
+        Console.WriteLine("\n=== Workflow completed ===");
     }
 }

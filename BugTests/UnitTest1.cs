@@ -7,250 +7,269 @@ namespace BugTests;
 [TestClass]
 public class BugWorkflowTests
 {
-    [TestMethod] 
-    public void Test01_InitialState_NewDefect()
+    private Bug _bug = null!;
+    
+    [TestInitialize]
+    public void Setup()
     {
-        var bug = new Bug();
-        Assert.AreEqual(State.NewDefect, bug.CurrentState);
+        _bug = new Bug();
     }
     
-    [TestMethod] 
-    public void Test02_Analyze_ToAnalysis()
+    [TestMethod]
+    public void Test01_InitialState_ShouldBeNew()
     {
-        var bug = new Bug();
-        bug.Analyze();
-        Assert.AreEqual(State.Analysis, bug.CurrentState);
+        Assert.AreEqual(BugState.New, _bug.CurrentState);
     }
     
-    [TestMethod] 
-    public void Test03_Reject_ToReturned()
+    [TestMethod]
+    public void Test02_StartTriage_ShouldChangeToTriage()
     {
-        var bug = new Bug();
-        bug.Analyze();
-        bug.Reject();
-        Assert.AreEqual(State.Returned, bug.CurrentState);
+        _bug.StartTriage();
+        Assert.AreEqual(BugState.Triage, _bug.CurrentState);
     }
     
-    [TestMethod] 
-    public void Test04_AskInfo_ToNeedMoreInfo()
+    [TestMethod]
+    public void Test03_Postpone_FromTriage_ShouldChangeToOnHold()
     {
-        var bug = new Bug();
-        bug.Analyze();
-        bug.AskInfo();
-        Assert.AreEqual(State.NeedMoreInfo, bug.CurrentState);
+        _bug.StartTriage();
+        _bug.Postpone();
+        Assert.AreEqual(BugState.OnHold, _bug.CurrentState);
     }
     
-    [TestMethod] 
-    public void Test05_ProvideInfo_ToAnalysis()
+    [TestMethod]
+    public void Test04_SeparateIssue_FromTriage_ShouldChangeToOnHold()
     {
-        var bug = new Bug();
-        bug.Analyze();
-        bug.AskInfo();
-        bug.ProvideInfo();
-        Assert.AreEqual(State.Analysis, bug.CurrentState);
+        _bug.StartTriage();
+        _bug.SeparateIssue();
+        Assert.AreEqual(BugState.OnHold, _bug.CurrentState);
     }
     
-    [TestMethod] 
-    public void Test06_StartFix_ToResolution()
+    [TestMethod]
+    public void Test05_NeedInfo_FromTriage_ShouldChangeToOnHold()
     {
-        var bug = new Bug();
-        bug.Analyze();
-        bug.StartFix();
-        Assert.AreEqual(State.Resolution, bug.CurrentState);
+        _bug.StartTriage();
+        _bug.NeedInfo();
+        Assert.AreEqual(BugState.OnHold, _bug.CurrentState);
     }
     
-    [TestMethod] 
-    public void Test07_VerifySuccess_ToClosed()
+    [TestMethod]
+    public void Test06_StartTriage_FromOnHold_ShouldReturnToTriage()
     {
-        var bug = new Bug();
-        bug.Analyze();
-        bug.StartFix();
-        bug.VerifySuccess();
-        Assert.AreEqual(State.Closed, bug.CurrentState);
+        _bug.StartTriage();
+        _bug.Postpone();
+        _bug.StartTriage();
+        Assert.AreEqual(BugState.Triage, _bug.CurrentState);
     }
     
-    [TestMethod] 
-    public void Test08_VerifyFailure_ToReturned()
+    [TestMethod]
+    public void Test07_NotABug_ShouldChangeToRejected()
     {
-        var bug = new Bug();
-        bug.Analyze();
-        bug.StartFix();
-        bug.VerifyFailure();
-        Assert.AreEqual(State.Returned, bug.CurrentState);
+        _bug.StartTriage();
+        _bug.NotABug();
+        Assert.AreEqual(BugState.Rejected, _bug.CurrentState);
     }
     
-    [TestMethod] 
-    public void Test09_ReportCannotReproduce_ToReview()
+    [TestMethod]
+    public void Test08_Duplicate_ShouldChangeToRejected()
     {
-        var bug = new Bug();
-        bug.Analyze();
-        bug.StartFix();
-        bug.ReportCannotReproduce();
-        Assert.AreEqual(State.Review, bug.CurrentState);
+        _bug.StartTriage();
+        _bug.Duplicate();
+        Assert.AreEqual(BugState.Rejected, _bug.CurrentState);
     }
     
-    [TestMethod] 
-    public void Test10_ConfirmNotRepro_ToClosed()
+    [TestMethod]
+    public void Test09_StartFix_ShouldChangeToFixing()
     {
-        var bug = new Bug();
-        bug.Analyze();
-        bug.StartFix();
-        bug.ReportCannotReproduce();
-        bug.ConfirmNotRepro();
-        Assert.AreEqual(State.Closed, bug.CurrentState);
+        _bug.StartTriage();
+        _bug.StartFix();
+        Assert.AreEqual(BugState.Fixing, _bug.CurrentState);
     }
     
-    [TestMethod] 
-    public void Test11_ConfirmBugExists_ToReturned()
+    [TestMethod]
+    public void Test10_Postpone_FromFixing_ShouldChangeToOnHold()
     {
-        var bug = new Bug();
-        bug.Analyze();
-        bug.StartFix();
-        bug.ReportCannotReproduce();
-        bug.ConfirmBugExists();
-        Assert.AreEqual(State.Returned, bug.CurrentState);
+        _bug.StartTriage();
+        _bug.StartFix();
+        _bug.Postpone();
+        Assert.AreEqual(BugState.OnHold, _bug.CurrentState);
     }
     
-    [TestMethod] 
-    public void Test12_ReturnForInfo_ToNeedMoreInfo()
+    [TestMethod]
+    public void Test11_CannotFix_ShouldChangeToCannotReproduce()
     {
-        var bug = new Bug();
-        bug.Analyze();
-        bug.StartFix();
-        bug.ReturnForInfo();
-        Assert.AreEqual(State.NeedMoreInfo, bug.CurrentState);
+        _bug.StartTriage();
+        _bug.StartFix();
+        _bug.CannotFix();
+        Assert.AreEqual(BugState.CannotReproduce, _bug.CurrentState);
     }
     
-    [TestMethod] 
-    public void Test13_ContinueFix_ToResolution()
+    [TestMethod]
+    public void Test12_ConfirmOk_FromCannotReproduce_ShouldChangeToClosed()
     {
-        var bug = new Bug();
-        bug.Analyze();
-        bug.StartFix();
-        bug.ReturnForInfo();
-        bug.ContinueFix();
-        Assert.AreEqual(State.Resolution, bug.CurrentState);
+        _bug.StartTriage();
+        _bug.StartFix();
+        _bug.CannotFix();
+        _bug.ConfirmOk();
+        Assert.AreEqual(BugState.Closed, _bug.CurrentState);
     }
     
-    [TestMethod] 
-    public void Test14_Reopen_ToReopened()
+    [TestMethod]
+    public void Test13_ConfirmNotOk_FromCannotReproduce_ShouldChangeToReturned()
     {
-        var bug = new Bug();
-        bug.Analyze();
-        bug.StartFix();
-        bug.VerifySuccess();
-        bug.Reopen();
-        Assert.AreEqual(State.Reopened, bug.CurrentState);
+        _bug.StartTriage();
+        _bug.StartFix();
+        _bug.CannotFix();
+        _bug.ConfirmNotOk();
+        Assert.AreEqual(BugState.Returned, _bug.CurrentState);
     }
     
-    [TestMethod] 
-    public void Test15_AnalyzeAgain_ToAnalysis()
+    [TestMethod]
+    public void Test14_MarkFixed_ShouldChangeToNeedCheck()
     {
-        var bug = new Bug();
-        bug.Analyze();
-        bug.StartFix();
-        bug.VerifySuccess();
-        bug.Reopen();
-        bug.AnalyzeAgain();
-        Assert.AreEqual(State.Analysis, bug.CurrentState);
+        _bug.StartTriage();
+        _bug.StartFix();
+        _bug.MarkFixed();
+        Assert.AreEqual(BugState.NeedCheck, _bug.CurrentState);
     }
     
-    [TestMethod] 
-    public void Test16_FullPositiveWorkflow()
+    [TestMethod]
+    public void Test15_Close_FromNeedCheck_ShouldChangeToClosed()
     {
-        var bug = new Bug();
-        bug.Analyze();
-        bug.StartFix();
-        bug.VerifySuccess();
-        Assert.AreEqual(State.Closed, bug.CurrentState);
+        _bug.StartTriage();
+        _bug.StartFix();
+        _bug.MarkFixed();
+        _bug.Close();
+        Assert.AreEqual(BugState.Closed, _bug.CurrentState);
     }
     
-    [TestMethod] 
-    public void Test17_InfoRequestWorkflow()
+    [TestMethod]
+    public void Test16_MarkNotFixed_ShouldChangeToReturned()
     {
-        var bug = new Bug();
-        bug.Analyze();
-        bug.AskInfo();
-        bug.ProvideInfo();
-        bug.StartFix();
-        bug.VerifySuccess();
-        Assert.AreEqual(State.Closed, bug.CurrentState);
+        _bug.StartTriage();
+        _bug.StartFix();
+        _bug.MarkFixed();
+        _bug.MarkNotFixed();
+        Assert.AreEqual(BugState.Returned, _bug.CurrentState);
     }
     
-    [TestMethod] 
-    public void Test18_ReturnForInfoWorkflow()
+    [TestMethod]
+    public void Test17_StartTriage_FromReturned_ShouldReturnToTriage()
     {
-        var bug = new Bug();
-        bug.Analyze();
-        bug.StartFix();
-        bug.ReturnForInfo();
-        bug.ContinueFix();
-        bug.VerifySuccess();
-        Assert.AreEqual(State.Closed, bug.CurrentState);
+        _bug.StartTriage();
+        _bug.StartFix();
+        _bug.MarkFixed();
+        _bug.MarkNotFixed();
+        _bug.StartTriage();
+        Assert.AreEqual(BugState.Triage, _bug.CurrentState);
     }
     
-    [TestMethod] 
-    public void Test19_NotReproducibleWorkflow()
+    [TestMethod]
+    public void Test18_Reopen_FromClosed_ShouldChangeToReopened()
     {
-        var bug = new Bug();
-        bug.Analyze();
-        bug.StartFix();
-        bug.ReportCannotReproduce();
-        bug.ConfirmNotRepro();
-        Assert.AreEqual(State.Closed, bug.CurrentState);
+        _bug.StartTriage();
+        _bug.StartFix();
+        _bug.MarkFixed();
+        _bug.Close();
+        _bug.Reopen();
+        Assert.AreEqual(BugState.Reopened, _bug.CurrentState);
     }
     
-    [TestMethod] 
-    public void Test20_ReopenWorkflow()
+    [TestMethod]
+    public void Test19_StartTriage_FromReopened_ShouldReturnToTriage()
     {
-        var bug = new Bug();
-        bug.Analyze();
-        bug.StartFix();
-        bug.VerifySuccess();
-        bug.Reopen();
-        bug.AnalyzeAgain();
-        bug.StartFix();
-        bug.VerifySuccess();
-        Assert.AreEqual(State.Closed, bug.CurrentState);
+        _bug.StartTriage();
+        _bug.StartFix();
+        _bug.MarkFixed();
+        _bug.Close();
+        _bug.Reopen();
+        _bug.StartTriage();
+        Assert.AreEqual(BugState.Triage, _bug.CurrentState);
+    }
+    
+    [TestMethod]
+    public void Test20_FullHappyPathWorkflow()
+    {
+        _bug.StartTriage();
+        _bug.StartFix();
+        _bug.MarkFixed();
+        _bug.Close();
+        Assert.AreEqual(BugState.Closed, _bug.CurrentState);
+    }
+    
+    [TestMethod]
+    public void Test21_FullWorkflowWithReturn()
+    {
+        _bug.StartTriage();
+        _bug.StartFix();
+        _bug.MarkFixed();
+        _bug.MarkNotFixed();
+        _bug.StartTriage();
+        _bug.StartFix();
+        _bug.MarkFixed();
+        _bug.Close();
+        Assert.AreEqual(BugState.Closed, _bug.CurrentState);
+    }
+    
+    [TestMethod]
+    public void Test22_FullWorkflowWithCannotReproduce()
+    {
+        _bug.StartTriage();
+        _bug.StartFix();
+        _bug.CannotFix();
+        _bug.ConfirmOk();
+        Assert.AreEqual(BugState.Closed, _bug.CurrentState);
+    }
+    
+    [TestMethod]
+    public void Test23_FullWorkflowWithCannotReproduceAndReturn()
+    {
+        _bug.StartTriage();
+        _bug.StartFix();
+        _bug.CannotFix();
+        _bug.ConfirmNotOk();
+        _bug.StartTriage();
+        _bug.StartFix();
+        _bug.MarkFixed();
+        _bug.Close();
+        Assert.AreEqual(BugState.Closed, _bug.CurrentState);
+    }
+    
+    [TestMethod]
+    public void Test24_FullWorkflowWithReopen()
+    {
+        _bug.StartTriage();
+        _bug.StartFix();
+        _bug.MarkFixed();
+        _bug.Close();
+        _bug.Reopen();
+        _bug.StartTriage();
+        _bug.StartFix();
+        _bug.MarkFixed();
+        _bug.Close();
+        Assert.AreEqual(BugState.Closed, _bug.CurrentState);
     }
     
     [TestMethod]
     [ExpectedException(typeof(InvalidOperationException))]
-    public void Test21_StartFixFromNewDefect_Throws() => new Bug().StartFix();
-    
-    [TestMethod]
-    [ExpectedException(typeof(InvalidOperationException))]
-    public void Test22_VerifySuccessFromAnalysis_Throws()
+    public void Test25_StartFixFromNew_ShouldThrow()
     {
-        var bug = new Bug();
-        bug.Analyze();
-        bug.VerifySuccess();
+        _bug.StartFix();
     }
     
     [TestMethod]
     [ExpectedException(typeof(InvalidOperationException))]
-    public void Test23_ReopenFromResolution_Throws()
+    public void Test26_CloseFromFixing_ShouldThrow()
     {
-        var bug = new Bug();
-        bug.Analyze();
-        bug.StartFix();
-        bug.Reopen();
+        _bug.StartTriage();
+        _bug.StartFix();
+        _bug.Close();
     }
     
     [TestMethod]
-    public void Test24_Hold_ToOnHold()
+    [ExpectedException(typeof(InvalidOperationException))]
+    public void Test27_ReopenFromTriage_ShouldThrow()
     {
-        var bug = new Bug();
-        bug.Hold();
-        Assert.AreEqual(State.OnHold, bug.CurrentState);
-    }
-    
-    [TestMethod]
-    public void Test25_Resume_ToAnalysis()
-    {
-        var bug = new Bug();
-        bug.Hold();
-        bug.Resume();
-        Assert.AreEqual(State.Analysis, bug.CurrentState);
+        _bug.StartTriage();
+        _bug.Reopen();
     }
 }
